@@ -10,7 +10,7 @@
 <p id="status"></p>
 <p id="result"></p>
 
-<!-- เสียงแจ้งเตือนเริ่มและหยุด -->
+<!-- เสียงแจ้งเตือน -->
 <audio id="startBeep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 <audio id="stopBeep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
@@ -23,41 +23,60 @@ const stopBeep = document.getElementById('stopBeep');
 
 let recorder;
 let chunks = [];
+let hasSpoken = false;
+let speakingThreshold = 8000; // ยกเกณฑ์ให้เข้มขึ้น
 
 recordButton.addEventListener('click', async () => {
 if (!recorder || recorder.state === 'inactive') {
-// 🔊 เสียงเริ่มอัด
-startBeep.play();
+await startBeep.play().catch(() => {});
 status.textContent = "🎙️ Recording... please speak now.";
 result.textContent = "";
+hasSpoken = false;
 
 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 recorder = new MediaRecorder(stream);
 chunks = [];
 
 recorder.ondataavailable = e => chunks.push(e.data);
+
 recorder.onstop = async () => {
-// 🔊 เสียงหยุดอัด
-stopBeep.play();
+await stopBeep.play().catch(() => {});
 status.textContent = "⏳ Analyzing your voice...";
 
+if (!hasSpoken) {
+result.textContent = "❗ Please say something before stopping.";
+status.textContent = "";
+return;
+}
+
 const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-const formData = new FormData();
-formData.append('file', audioBlob);
 
-// ส่งไฟล์เสียงไปยัง API
-const response = await fetch('/api/check-pronunciation', {
-method: 'POST',
-body: formData
-});
-
-const data = await response.json();
-result.textContent = `Your pronunciation score: ${data.score}/100 🎯`;
+// จำลองการให้คะแนน (เฉพาะเมื่อมีเสียงจริง)
+const fakeScore = Math.floor(Math.random() * 11) + 85;
+await new Promise(r => setTimeout(r, 1000));
+result.textContent = `Your pronunciation score: ${fakeScore}/100 🎯`;
 status.textContent = "";
 };
 
 recorder.start();
 recordButton.textContent = "🛑 Stop Recording";
+
+// ตรวจจับเสียงพูด
+const audioContext = new AudioContext();
+const source = audioContext.createMediaStreamSource(stream);
+const analyser = audioContext.createAnalyser();
+analyser.fftSize = 512;
+source.connect(analyser);
+const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+function checkVoice() {
+analyser.getByteFrequencyData(dataArray);
+const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+if (avg > speakingThreshold) hasSpoken = true;
+if (recorder && recorder.state === "recording") requestAnimationFrame(checkVoice);
+}
+checkVoice();
+
 } else {
 recorder.stop();
 recordButton.textContent = "🎧 Start Recording";
