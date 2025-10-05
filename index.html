@@ -36,13 +36,18 @@ margin-top: 20px;
 <h1>🎤 English Speaking Practice</h1>
 <p>Select a sentence and try to pronounce it!</p>
 
+<!-- ✅ dropdown หลายประโยค -->
 <select id="sentenceSelect">
 <option value="My favorite country is South Korea.">My favorite country is South Korea.</option>
 <option value="I like learning English every day.">I like learning English every day.</option>
 <option value="Traveling makes me happy.">Traveling makes me happy.</option>
 <option value="I want to speak English like a native speaker.">I want to speak English like a native speaker.</option>
+<option value="The weather is beautiful today.">The weather is beautiful today.</option>
+<option value="I enjoy watching Korean dramas.">I enjoy watching Korean dramas.</option>
+<option value="Speaking English helps me make new friends.">Speaking English helps me make new friends.</option>
 </select>
 
+<!-- ✅ ข้อความที่จะแสดงตามประโยคที่เลือก -->
 <h3 id="targetSentence">My favorite country is South Korea.</h3>
 
 <button id="recordButton">Start Recording</button>
@@ -62,19 +67,18 @@ const stopBeep = document.getElementById("stopBeep");
 const sentenceSelect = document.getElementById("sentenceSelect");
 const targetSentence = document.getElementById("targetSentence");
 
+// ✅ เมื่อผู้ใช้เลือกประโยคใหม่
+sentenceSelect.addEventListener("change", () => {
+targetSentence.textContent = sentenceSelect.value;
+result.textContent = "";
+});
+
 let mediaRecorder;
 let audioChunks = [];
 let isRecording = false;
 let speakingThreshold = 1500; // ตรวจจับเสียงไวขึ้น
 let speakingDetected = false;
 
-// เปลี่ยนประโยคเมื่อเลือก
-sentenceSelect.addEventListener("change", () => {
-targetSentence.textContent = sentenceSelect.value;
-result.textContent = "";
-});
-
-// ปุ่มเริ่ม/หยุดอัด
 recordButton.addEventListener("click", async () => {
 if (!isRecording) {
 startRecording();
@@ -146,11 +150,6 @@ status.textContent = "✨ Try another sentence!";
 });
 }
 }
-const recordButton = document.getElementById("recordButton");
-const status = document.getElementById("status");
-const result = document.getElementById("result");
-const startBeep = document.getElementById("startBeep");
-const stopBeep = document.getElementById("stopBeep");
 </script>
 </body>
 </html>
