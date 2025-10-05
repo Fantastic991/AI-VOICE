@@ -1,11 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>AI Pronunciation Test</title>
+<title>AI Pronunciation Practice</title>
 </head>
 <body>
 <h1>🎙️ Pronunciation Practice</h1>
-<p>Say this sentence: <b>My favorite country is South Korea</b></p>
+
+<label for="sentenceSelect">Choose a sentence:</label>
+<select id="sentenceSelect">
+<option>My favorite country is South Korea.</option>
+<option>I like learning new languages.</option>
+<option>Traveling makes me happy.</option>
+<option>Today is a beautiful day.</option>
+<option>I want to speak English fluently.</option>
+</select>
+
+<p id="targetSentence"></p>
+
 <button id="recordButton">🎧 Start Recording</button>
 <p id="status"></p>
 <p id="result"></p>
@@ -15,21 +26,29 @@
 <audio id="stopBeep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
 <script>
-const recordButton = document.getElementById('recordButton');
-const status = document.getElementById('status');
-const result = document.getElementById('result');
-const startBeep = document.getElementById('startBeep');
-const stopBeep = document.getElementById('stopBeep');
+const recordButton = document.getElementById("recordButton");
+const status = document.getElementById("status");
+const result = document.getElementById("result");
+const startBeep = document.getElementById("startBeep");
+const stopBeep = document.getElementById("stopBeep");
+const sentenceSelect = document.getElementById("sentenceSelect");
+const targetSentence = document.getElementById("targetSentence");
 
 let recorder;
 let chunks = [];
 let hasSpoken = false;
-let speakingThreshold = 8000; // ยกเกณฑ์ให้เข้มขึ้น
+let speakingThreshold = 3000;
 
-recordButton.addEventListener('click', async () => {
-if (!recorder || recorder.state === 'inactive') {
+// แสดงประโยคที่เลือก
+targetSentence.textContent = "Say this: " + sentenceSelect.value;
+sentenceSelect.addEventListener("change", () => {
+targetSentence.textContent = "Say this: " + sentenceSelect.value;
+});
+
+recordButton.addEventListener("click", async () => {
+if (!recorder || recorder.state === "inactive") {
 await startBeep.play().catch(() => {});
-status.textContent = "🎙️ Recording... please speak now.";
+status.textContent = "🎙️ Recording... please speak now. (พูดใกล้ไมค์หน่อยนะ)";
 result.textContent = "";
 hasSpoken = false;
 
@@ -49,19 +68,17 @@ status.textContent = "";
 return;
 }
 
-const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-
-// จำลองการให้คะแนน (เฉพาะเมื่อมีเสียงจริง)
+const audioBlob = new Blob(chunks, { type: "audio/webm" });
 const fakeScore = Math.floor(Math.random() * 11) + 85;
 await new Promise(r => setTimeout(r, 1000));
-result.textContent = `Your pronunciation score: ${fakeScore}/100 🎯`;
+result.textContent = `Sentence: "${sentenceSelect.value}"
+→ Score: ${fakeScore}/100 🎯`;
 status.textContent = "";
 };
 
 recorder.start();
 recordButton.textContent = "🛑 Stop Recording";
 
-// ตรวจจับเสียงพูด
 const audioContext = new AudioContext();
 const source = audioContext.createMediaStreamSource(stream);
 const analyser = audioContext.createAnalyser();
