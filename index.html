@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>AI Pronunciation Test</title>
+</head>
+<body>
+<h1>🎙️ Pronunciation Practice</h1>
+<p>Say this sentence: <b>My favorite country is South Korea</b></p>
+<button id="recordButton">🎧 Record</button>
+<p id="result"></p>
+
+<script>
+const recordButton = document.getElementById('recordButton');
+const result = document.getElementById('result');
+
+recordButton.addEventListener('click', async () => {
+result.textContent = "Recording... (say your sentence)";
+const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+const recorder = new MediaRecorder(stream);
+const chunks = [];
+recorder.ondataavailable = e => chunks.push(e.data);
+recorder.onstop = async () => {
+const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+result.textContent = "Analyzing your voice...";
+
+// ส่งไฟล์เสียงไปยัง API ที่จะประเมินเสียงพูด
+const formData = new FormData();
+formData.append('file', audioBlob);
+
+const response = await fetch('/api/check-pronunciation', {
+method: 'POST',
+body: formData
+});
+const data = await response.json();
+result.textContent = `Your pronunciation score: ${data.score}/100 🎯`;
+};
+recorder.start();
+setTimeout(() => recorder.stop(), 3000);
+});
+</script>
+</body>
+</html>
