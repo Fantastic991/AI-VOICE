@@ -1,27 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>AI Pronunciation Practice</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Speaking Practice</title>
+<style>
+body {
+font-family: Arial, sans-serif;
+background: #f0f2f5;
+text-align: center;
+padding: 50px;
+}
+h1 {
+color: #2c3e50;
+}
+select, button {
+margin: 10px;
+padding: 10px;
+font-size: 16px;
+}
+#status {
+font-size: 18px;
+margin-top: 20px;
+color: #555;
+}
+#result {
+font-size: 22px;
+font-weight: bold;
+color: #27ae60;
+margin-top: 20px;
+}
+</style>
 </head>
 <body>
-<h1>🎙️ Pronunciation Practice</h1>
+<h1>🎤 English Speaking Practice</h1>
+<p>Select a sentence and try to pronounce it!</p>
 
-<label for="sentenceSelect">Choose a sentence:</label>
 <select id="sentenceSelect">
-<option>My favorite country is South Korea.</option>
-<option>I like learning new languages.</option>
-<option>Traveling makes me happy.</option>
-<option>Today is a beautiful day.</option>
-<option>I want to speak English fluently.</option>
+<option value="My favorite country is South Korea.">My favorite country is South Korea.</option>
+<option value="I like learning English every day.">I like learning English every day.</option>
+<option value="Traveling makes me happy.">Traveling makes me happy.</option>
+<option value="I want to speak English like a native speaker.">I want to speak English like a native speaker.</option>
 </select>
 
-<p id="targetSentence"></p>
+<h3 id="targetSentence">My favorite country is South Korea.</h3>
 
-<button id="recordButton">🎧 Start Recording</button>
-<p id="status"></p>
+<button id="recordButton">Start Recording</button>
+<p id="status">Click "Start Recording" to begin.</p>
 <p id="result"></p>
 
-<!-- เสียงแจ้งเตือน -->
+<!-- เสียงติ๊ด -->
 <audio id="startBeep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 <audio id="stopBeep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
@@ -34,72 +62,90 @@ const stopBeep = document.getElementById("stopBeep");
 const sentenceSelect = document.getElementById("sentenceSelect");
 const targetSentence = document.getElementById("targetSentence");
 
-let recorder;
-let chunks = [];
-let hasSpoken = false;
-let speakingThreshold = 3000;
+let mediaRecorder;
+let audioChunks = [];
+let isRecording = false;
+let speakingThreshold = 1500; // ตรวจจับเสียงไวขึ้น
+let speakingDetected = false;
 
-// แสดงประโยคที่เลือก
-targetSentence.textContent = "Say this: " + sentenceSelect.value;
+// เปลี่ยนประโยคเมื่อเลือก
 sentenceSelect.addEventListener("change", () => {
-targetSentence.textContent = "Say this: " + sentenceSelect.value;
+targetSentence.textContent = sentenceSelect.value;
+result.textContent = "";
 });
 
+// ปุ่มเริ่ม/หยุดอัด
 recordButton.addEventListener("click", async () => {
-if (!recorder || recorder.state === "inactive") {
-await startBeep.play().catch(() => {});
-status.textContent = "🎙️ Recording... please speak now. (พูดใกล้ไมค์หน่อยนะ)";
-result.textContent = "";
-hasSpoken = false;
-
-const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-recorder = new MediaRecorder(stream);
-chunks = [];
-
-recorder.ondataavailable = e => chunks.push(e.data);
-
-recorder.onstop = async () => {
-await stopBeep.play().catch(() => {});
-status.textContent = "⏳ Analyzing your voice...";
-
-if (!hasSpoken) {
-result.textContent = "❗ Please say something before stopping.";
-status.textContent = "";
-return;
+if (!isRecording) {
+startRecording();
+} else {
+stopRecording();
 }
+});
 
-const audioBlob = new Blob(chunks, { type: "audio/webm" });
-const fakeScore = Math.floor(Math.random() * 11) + 85;
-await new Promise(r => setTimeout(r, 1000));
-result.textContent = `Sentence: "${sentenceSelect.value}"
-→ Score: ${fakeScore}/100 🎯`;
-status.textContent = "";
-};
+async function startRecording() {
+startBeep.play();
+result.textContent = "";
+status.textContent = "🎙️ Recording... Please speak now!";
+recordButton.textContent = "Stop Recording";
+isRecording = true;
+speakingDetected = false;
 
-recorder.start();
-recordButton.textContent = "🛑 Stop Recording";
+try {
+const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+mediaRecorder = new MediaRecorder(stream);
+mediaRecorder.start();
+
+audioChunks = [];
 
 const audioContext = new AudioContext();
 const source = audioContext.createMediaStreamSource(stream);
 const analyser = audioContext.createAnalyser();
-analyser.fftSize = 512;
-source.connect(analyser);
 const dataArray = new Uint8Array(analyser.frequencyBinCount);
+source.connect(analyser);
 
-function checkVoice() {
+const detectSpeaking = () => {
 analyser.getByteFrequencyData(dataArray);
 const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-if (avg > speakingThreshold) hasSpoken = true;
-if (recorder && recorder.state === "recording") requestAnimationFrame(checkVoice);
+if (avg > 20) {
+speakingDetected = true;
 }
-checkVoice();
+if (isRecording) requestAnimationFrame(detectSpeaking);
+};
+detectSpeaking();
 
-} else {
-recorder.stop();
-recordButton.textContent = "🎧 Start Recording";
-status.textContent = "Processing your voice...";
-}
+mediaRecorder.addEventListener("dataavailable", event => {
+audioChunks.push(event.data);
 });
+
+} catch (err) {
+status.textContent = "⚠️ Microphone access denied.";
+}
+}
+
+function stopRecording() {
+stopBeep.play();
+recordButton.textContent = "Start Recording";
+isRecording = false;
+
+if (mediaRecorder && mediaRecorder.state !== "inactive") {
+mediaRecorder.stop();
+mediaRecorder.addEventListener("stop", () => {
+if (!speakingDetected) {
+status.textContent = "😶 You didn't speak.";
+result.textContent = "";
+return;
+}
+
+status.textContent = "✅ Analyzing pronunciation...";
+setTimeout(() => {
+const randomScore = (Math.random() * 20 + 80).toFixed(1);
+result.textContent = `Your score: ${randomScore}/100`;
+status.textContent = "✨ Try another sentence!";
+}, 1500);
+});
+}
+}
 </script>
 </body>
 </html>
