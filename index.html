@@ -7,56 +7,57 @@
 <style>
 body {
 font-family: Arial, sans-serif;
-background: #f0f2f5;
 text-align: center;
-padding: 50px;
+background-color: #f8f9fa;
+padding: 40px;
 }
 h1 {
-color: #2c3e50;
+color: #333;
+}
+#targetSentence {
+font-size: 1.5em;
+margin: 20px 0;
 }
 select, button {
-margin: 10px;
+font-size: 1em;
 padding: 10px;
-font-size: 16px;
-}
-#status {
-font-size: 18px;
-margin-top: 20px;
-color: #555;
+margin: 10px;
 }
 #result {
-font-size: 22px;
-font-weight: bold;
-color: #27ae60;
 margin-top: 20px;
+font-size: 1.3em;
+font-weight: bold;
+color: #007bff;
 }
 </style>
 </head>
 <body>
-<h1>🎤 English Speaking Practice</h1>
-<p>Select a sentence and try to pronounce it!</p>
+<h1>🎤 AI Speaking Practice</h1>
 
-<!-- ✅ dropdown หลายประโยค -->
+<label for="sentenceSelect">เลือกประโยค:</label>
 <select id="sentenceSelect">
-<option value="My favorite country is South Korea.">My favorite country is South Korea.</option>
-<option value="I like learning English every day.">I like learning English every day.</option>
-<option value="Traveling makes me happy.">Traveling makes me happy.</option>
-<option value="I want to speak English like a native speaker.">I want to speak English like a native speaker.</option>
-<option value="The weather is beautiful today.">The weather is beautiful today.</option>
-<option value="I enjoy watching Korean dramas.">I enjoy watching Korean dramas.</option>
-<option value="Speaking English helps me make new friends.">Speaking English helps me make new friends.</option>
+<option>My favorite country is South Korea.</option>
+<option>I like to travel every summer.</option>
+<option>Learning English is fun and useful.</option>
+<option>How are you today?</option>
 </select>
 
-<!-- ✅ ข้อความที่จะแสดงตามประโยคที่เลือก -->
-<h3 id="targetSentence">My favorite country is South Korea.</h3>
+<div id="targetSentence">My favorite country is South Korea.</div>
 
-<button id="recordButton">Start Recording</button>
-<p id="status">Click "Start Recording" to begin.</p>
+<!-- ปุ่มฟังเสียง AI -->
+<button id="playButton">🔈 ฟังเสียงตัวอย่าง</button>
+
+<!-- ปุ่มอัดเสียง -->
+<div>
+<button id="recordButton">🎙️ เริ่มพูด</button>
+</div>
+
+<p id="status"></p>
 <p id="result"></p>
 
-<!-- เสียงติ๊ด -->
+<!-- เสียงแจ้งเตือนเริ่ม/หยุด -->
 <audio id="startBeep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
-<audio id="stopBeep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+<audio id="stopBeep" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
 
 <script>
 const recordButton = document.getElementById("recordButton");
@@ -67,89 +68,55 @@ const stopBeep = document.getElementById("stopBeep");
 const sentenceSelect = document.getElementById("sentenceSelect");
 const targetSentence = document.getElementById("targetSentence");
 
-// ✅ เมื่อผู้ใช้เลือกประโยคใหม่
+// ✅ เปลี่ยนประโยคตามที่เลือก
 sentenceSelect.addEventListener("change", () => {
 targetSentence.textContent = sentenceSelect.value;
 result.textContent = "";
 });
 
+// 🎧 เสียงแจ้งเตือนเริ่ม/หยุดอัด
 let mediaRecorder;
-let audioChunks = [];
-let isRecording = false;
-let speakingThreshold = 1500; // ตรวจจับเสียงไวขึ้น
-let speakingDetected = false;
+let chunks = [];
 
 recordButton.addEventListener("click", async () => {
-if (!isRecording) {
-startRecording();
+if (mediaRecorder && mediaRecorder.state === "recording") {
+stopBeep.play();
+mediaRecorder.stop();
+recordButton.textContent = "🎙️ เริ่มพูด";
+status.textContent = "⏹️ หยุดอัดเสียงแล้ว กำลังประมวลผล...";
 } else {
-stopRecording();
-}
-});
-
-async function startRecording() {
 startBeep.play();
-result.textContent = "";
-status.textContent = "🎙️ Recording... Please speak now!";
-recordButton.textContent = "Stop Recording";
-isRecording = true;
-speakingDetected = false;
-
-try {
 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 mediaRecorder = new MediaRecorder(stream);
-mediaRecorder.start();
+chunks = [];
 
-audioChunks = [];
-
-const audioContext = new AudioContext();
-const source = audioContext.createMediaStreamSource(stream);
-const analyser = audioContext.createAnalyser();
-const dataArray = new Uint8Array(analyser.frequencyBinCount);
-source.connect(analyser);
-
-const detectSpeaking = () => {
-analyser.getByteFrequencyData(dataArray);
-const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-if (avg > 20) {
-speakingDetected = true;
-}
-if (isRecording) requestAnimationFrame(detectSpeaking);
+mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+mediaRecorder.onstop = () => {
+const audioBlob = new Blob(chunks, { type: "audio/wav" });
+analyzePronunciation(audioBlob);
 };
-detectSpeaking();
 
-mediaRecorder.addEventListener("dataavailable", event => {
-audioChunks.push(event.data);
+mediaRecorder.start();
+recordButton.textContent = "⏹️ หยุดพูด";
+status.textContent = "🎤 กำลังอัดเสียง...";
+}
 });
 
-} catch (err) {
-status.textContent = "⚠️ Microphone access denied.";
-}
-}
-
-function stopRecording() {
-stopBeep.play();
-recordButton.textContent = "Start Recording";
-isRecording = false;
-
-if (mediaRecorder && mediaRecorder.state !== "inactive") {
-mediaRecorder.stop();
-mediaRecorder.addEventListener("stop", () => {
-if (!speakingDetected) {
-status.textContent = "😶 You didn't speak.";
-result.textContent = "";
-return;
+// 🧠 ระบบให้คะแนนแบบง่าย (สุ่มเพื่อสาธิต)
+function analyzePronunciation(audioBlob) {
+status.textContent = "";
+const randomScore = Math.floor(Math.random() * 30) + 70;
+result.textContent = `⭐ คะแนนการออกเสียง: ${randomScore}/100`;
 }
 
-status.textContent = "✅ Analyzing pronunciation...";
-setTimeout(() => {
-const randomScore = (Math.random() * 20 + 80).toFixed(1);
-result.textContent = `Your score: ${randomScore}/100`;
-status.textContent = "✨ Try another sentence!";
-}, 1500);
+// 🔊 ฟังเสียงตัวอย่าง (สำเนียงอเมริกัน)
+const playButton = document.getElementById("playButton");
+playButton.addEventListener("click", () => {
+const sentence = targetSentence.textContent.trim();
+const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&q=${encodeURIComponent(sentence)}&tl=en`;
+const audio = new Audio(url);
+audio.play();
 });
-}
-}
 </script>
 </body>
 </html>
