@@ -1,8 +1,3 @@
-
-Fantastic Center <fantasticcenter@gmail.com>
-20:36 (0 นาทีที่ผ่านมา)
-ถึง ฉัน
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -15,31 +10,42 @@ Fantastic Center <fantasticcenter@gmail.com>
 <p id="status"></p>
 <p id="result"></p>
 
+<!-- เสียงแจ้งเตือนเริ่มและหยุด -->
+<audio id="startBeep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+<audio id="stopBeep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
 <script>
 const recordButton = document.getElementById('recordButton');
 const status = document.getElementById('status');
 const result = document.getElementById('result');
+const startBeep = document.getElementById('startBeep');
+const stopBeep = document.getElementById('stopBeep');
 
 let recorder;
 let chunks = [];
 
 recordButton.addEventListener('click', async () => {
 if (!recorder || recorder.state === 'inactive') {
-// เริ่มบันทึกเสียง
+// 🔊 เสียงเริ่มอัด
+startBeep.play();
 status.textContent = "🎙️ Recording... please speak now.";
 result.textContent = "";
+
 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 recorder = new MediaRecorder(stream);
 chunks = [];
 
 recorder.ondataavailable = e => chunks.push(e.data);
 recorder.onstop = async () => {
+// 🔊 เสียงหยุดอัด
+stopBeep.play();
 status.textContent = "⏳ Analyzing your voice...";
+
 const audioBlob = new Blob(chunks, { type: 'audio/webm' });
 const formData = new FormData();
 formData.append('file', audioBlob);
 
-// ส่งไฟล์ไปยัง API
+// ส่งไฟล์เสียงไปยัง API
 const response = await fetch('/api/check-pronunciation', {
 method: 'POST',
 body: formData
@@ -53,7 +59,6 @@ status.textContent = "";
 recorder.start();
 recordButton.textContent = "🛑 Stop Recording";
 } else {
-// หยุดบันทึกเสียง
 recorder.stop();
 recordButton.textContent = "🎧 Start Recording";
 status.textContent = "Processing your voice...";
