@@ -132,5 +132,15 @@ audio.play();
 }
 }
 </script>
+<script>
+async function playVoice() {
+  const text = document.getElementById('textInput').value;
+  if (!text) return alert("กรุณาใส่ข้อความก่อนนะครับ");
+  
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "en-US"; // เปลี่ยนเป็น "ko-KR" ถ้าอยากให้เสียงสำเนียงเกาหลี
+  speechSynthesis.speak(utterance);
+}
+</script>
 </body>
 </html>
