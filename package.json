@@ -1,0 +1,13 @@
+{
+  "name": "ai-voice",
+  "version": "1.0.0",
+  "description": "AI Voice pronunciation web app",
+  "main": "index.html",
+  "type": "module",
+  "scripts": {
+    "start": "node check-pronunciation.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
