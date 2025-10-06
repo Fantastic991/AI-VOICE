@@ -22,8 +22,8 @@ input { padding: 8px; width: 70%; border-radius: 6px; border: 1px solid #ccc; fo
 <div id="sentences"></div>
 
 <div id="addSentence">
-<input id="newSentence" placeholder="พิมพ์ประโยคภาษาอังกฤษที่นี่..." />
-<button id="addBtn">➕ เพิ่มประโยค</button>
+  <input id="newSentence" placeholder="พิมพ์ประโยคภาษาอังกฤษที่นี่..." />
+  <button id="addBtn">➕ เพิ่มประโยค</button>
 </div>
 
 <button id="startBtn">🎙️ Start Recording</button>
@@ -33,9 +33,9 @@ input { padding: 8px; width: 70%; border-radius: 6px; border: 1px solid #ccc; fo
 
 <script>
 let sentences = [
-"My favorite country is South Korea.",
-"I like listening to K-pop songs.",
-"I will travel to Seoul next year."
+  "My favorite country is South Korea.",
+  "I like listening to K-pop songs.",
+  "I will travel to Seoul next year."
 ];
 let currentSentenceIndex = 0;
 
@@ -45,32 +45,32 @@ const stopBtn = document.getElementById("stopBtn");
 const scoreDiv = document.getElementById("score");
 
 function renderSentences() {
-container.innerHTML = "";
-sentences.forEach((txt, i) => {
-const div = document.createElement('div');
-div.className = 'sentence';
-div.innerHTML = `
-<b>${i+1}. ${txt}</b><br>
-<button onclick="playTTS('${txt.replace(/'/g, "\\'")}')">🔊 Listen</button>
-<button onclick="selectSentence(${i})">🎯 Choose</button>
-`;
-if (i === currentSentenceIndex) div.style.border = "2px solid #007bff";
-container.appendChild(div);
-});
+  container.innerHTML = "";
+  sentences.forEach((txt, i) => {
+    const div = document.createElement('div');
+    div.className = 'sentence';
+    div.innerHTML = `
+      <b>${i+1}. ${txt}</b><br>
+      <button onclick="playTTS('${txt.replace(/'/g, "\\'")}')">🔊 Listen</button>
+      <button onclick="selectSentence(${i})">🎯 Choose</button>
+    `;
+    if (i === currentSentenceIndex) div.style.border = "2px solid #007bff";
+    container.appendChild(div);
+  });
 }
 
 window.selectSentence = (index) => {
-currentSentenceIndex = index;
-renderSentences();
-scoreDiv.textContent = `Selected: "${sentences[index]}"`;
+  currentSentenceIndex = index;
+  renderSentences();
+  scoreDiv.textContent = `Selected: "${sentences[index]}"`;
 };
 
 document.getElementById("addBtn").onclick = () => {
-const newTxt = document.getElementById("newSentence").value.trim();
-if (!newTxt) return alert("กรุณาพิมพ์ประโยคก่อนค่ะ");
-sentences.push(newTxt);
-document.getElementById("newSentence").value = "";
-renderSentences();
+  const newTxt = document.getElementById("newSentence").value.trim();
+  if (!newTxt) return alert("กรุณาพิมพ์ประโยคก่อนค่ะ");
+  sentences.push(newTxt);
+  document.getElementById("newSentence").value = "";
+  renderSentences();
 };
 
 renderSentences();
@@ -82,63 +82,39 @@ const startBeep = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABA
 const stopBeep = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAABCxAgAEABAAZGF0YYQAAACQ");
 
 startBtn.onclick = async () => {
-startBeep.play();
-const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-mediaRecorder = new MediaRecorder(stream);
-audioChunks = [];
-mediaRecorder.start();
-mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-startBtn.disabled = true;
-stopBtn.disabled = false;
-scoreDiv.textContent = "Recording...";
+  startBeep.play();
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  mediaRecorder = new MediaRecorder(stream);
+  audioChunks = [];
+  mediaRecorder.start();
+  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+  scoreDiv.textContent = "Recording...";
 };
 
 stopBtn.onclick = async () => {
-stopBeep.play();
-mediaRecorder.stop();
-mediaRecorder.onstop = async () => {
-const blob = new Blob(audioChunks, { type: 'audio/webm' });
-const arr = await blob.arrayBuffer();
-const base64 = btoa(String.fromCharCode(...new Uint8Array(arr)));
+  stopBeep.play();
+  mediaRecorder.stop();
+  mediaRecorder.onstop = async () => {
+    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+    const arr = await blob.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arr)));
 
-const currentSentence = sentences[currentSentenceIndex];
-const res = await fetch("/api/check-pronunciation.js", {
-method: "POST",
-headers: { "Content-Type": "application/json" },
-body: JSON.stringify({ file: base64, reference: currentSentence })
-});
-
-const data = await res.json();
-if (data.score !== undefined) {
-scoreDiv.textContent = `⭐ Score: ${data.score.toFixed(0)} / 100`;
-} else {
-scoreDiv.textContent = "Error: " + (data.error || "Unknown");
-}
-};
-startBtn.disabled = false;
-stopBtn.disabled = true;
+    // ตัวอย่างการตรวจออกเสียง (mock)
+    const currentSentence = sentences[currentSentenceIndex];
+    scoreDiv.textContent = `⭐ You said: "${currentSentence}" (Demo mode)`;
+  };
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
 };
 
+// ✅ ใช้เสียงจากเบราว์เซอร์ (ไม่ต้องใช้ API)
 async function playTTS(text) {
-const res = await fetch("/api/tts.js", {
-method: "POST",
-headers: { "Content-Type": "application/json" },
-body: JSON.stringify({ text, voice: "alloy", lang: "en" })
-});
-const data = await res.json();
-if (data.audioBase64) {
-const audio = new Audio("data:audio/mpeg;base64," + data.audioBase64);
-audio.play();
-}
-}
-</script>
-<script>
-async function playVoice() {
-  const text = document.getElementById('textInput').value;
-  if (!text) return alert("กรุณาใส่ข้อความก่อนนะครับ");
-  
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "en-US"; // เปลี่ยนเป็น "ko-KR" ถ้าอยากให้เสียงสำเนียงเกาหลี
+  utterance.lang = "en-US"; // 🇺🇸 เปลี่ยนเป็น "ko-KR" ถ้าอยากได้สำเนียงเกาหลี
+  utterance.rate = 1; // ความเร็ว
+  utterance.pitch = 1; // โทนเสียง
   speechSynthesis.speak(utterance);
 }
 </script>
