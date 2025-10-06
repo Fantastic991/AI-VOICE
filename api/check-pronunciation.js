@@ -1,0 +1,1 @@
+// Content of check-pronunciation.js file.
