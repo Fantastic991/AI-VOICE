@@ -2,155 +2,135 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AI Speaking Practice</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Speak Practice</title>
 <style>
-body {
-font-family: Arial, sans-serif;
-text-align: center;
-background-color: #f8f9fa;
-padding: 40px;
-}
-h1 {
-color: #333;
-}
-#targetSentence {
-font-size: 1.5em;
-margin: 20px 0;
-}
-select, button {
-font-size: 1em;
-padding: 10px;
-margin: 10px;
-cursor: pointer;
-}
-#accentButtons button {
-border: none;
-border-radius: 8px;
-background-color: #e0e0e0;
-}
-#accentButtons button.active {
-background-color: #007bff;
-color: white;
-}
-#result {
-margin-top: 20px;
-font-size: 1.3em;
-font-weight: bold;
-color: #007bff;
-}
+body { font-family: sans-serif; text-align: center; padding: 20px; background: #f9fafc; }
+h1 { margin-bottom: 10px; }
+button { margin: 5px; padding: 10px 20px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; }
+#score { font-size: 22px; margin-top: 15px; font-weight: bold; }
+audio { margin-top: 15px; }
+.sentence { margin: 15px auto; font-size: 20px; background: #fff; border-radius: 8px; padding: 10px; width: 90%; max-width: 500px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+#addSentence { margin-top: 20px; }
+input { padding: 8px; width: 70%; border-radius: 6px; border: 1px solid #ccc; font-size: 16px; }
 </style>
 </head>
 <body>
-<h1>🎤 AI Speaking Practice</h1>
+<h1>🎧 AI Speak Practice</h1>
+<p>เพิ่มประโยคที่คุณอยากฝึก แล้วพูดตามเพื่อรับคะแนน!</p>
 
-<label for="sentenceSelect">เลือกประโยค:</label>
-<select id="sentenceSelect">
-<option>My favorite country is South Korea.</option>
-<option>I like to travel every summer.</option>
-<option>Learning English is fun and useful.</option>
-<option>How are you today?</option>
-</select>
+<div id="sentences"></div>
 
-<div id="targetSentence">My favorite country is South Korea.</div>
-
-<!-- ปุ่มเลือกสำเนียง -->
-<div id="accentButtons">
-<button id="usAccent" class="active">🇺🇸 American</button>
-<button id="krAccent">🇰🇷 Korean</button>
+<div id="addSentence">
+<input id="newSentence" placeholder="พิมพ์ประโยคภาษาอังกฤษที่นี่..." />
+<button id="addBtn">➕ เพิ่มประโยค</button>
 </div>
 
-<!-- ปุ่มฟังเสียง AI -->
-<button id="playButton">🔈 ฟังเสียงตัวอย่าง</button>
+<button id="startBtn">🎙️ Start Recording</button>
+<button id="stopBtn" disabled>⏹️ Stop</button>
 
-<!-- ปุ่มอัดเสียง -->
-<div>
-<button id="recordButton">🎙️ เริ่มพูด</button>
-</div>
-
-<p id="status"></p>
-<p id="result"></p>
-
-<!-- เสียงแจ้งเตือนเริ่ม/หยุด -->
-<audio id="startBeep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
-<audio id="stopBeep" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
+<div id="score"></div>
 
 <script>
-const recordButton = document.getElementById("recordButton");
-const status = document.getElementById("status");
-const result = document.getElementById("result");
-const startBeep = document.getElementById("startBeep");
-const stopBeep = document.getElementById("stopBeep");
-const sentenceSelect = document.getElementById("sentenceSelect");
-const targetSentence = document.getElementById("targetSentence");
+let sentences = [
+"My favorite country is South Korea.",
+"I like listening to K-pop songs.",
+"I will travel to Seoul next year."
+];
+let currentSentenceIndex = 0;
 
-// ✅ เปลี่ยนประโยคตามที่เลือก
-sentenceSelect.addEventListener("change", () => {
-targetSentence.textContent = sentenceSelect.value;
-result.textContent = "";
+const container = document.getElementById('sentences');
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const scoreDiv = document.getElementById("score");
+
+function renderSentences() {
+container.innerHTML = "";
+sentences.forEach((txt, i) => {
+const div = document.createElement('div');
+div.className = 'sentence';
+div.innerHTML = `
+<b>${i+1}. ${txt}</b><br>
+<button onclick="playTTS('${txt.replace(/'/g, "\\'")}')">🔊 Listen</button>
+<button onclick="selectSentence(${i})">🎯 Choose</button>
+`;
+if (i === currentSentenceIndex) div.style.border = "2px solid #007bff";
+container.appendChild(div);
 });
+}
 
-// 🎧 เสียงแจ้งเตือนเริ่ม/หยุดอัด
+window.selectSentence = (index) => {
+currentSentenceIndex = index;
+renderSentences();
+scoreDiv.textContent = `Selected: "${sentences[index]}"`;
+};
+
+document.getElementById("addBtn").onclick = () => {
+const newTxt = document.getElementById("newSentence").value.trim();
+if (!newTxt) return alert("กรุณาพิมพ์ประโยคก่อนค่ะ");
+sentences.push(newTxt);
+document.getElementById("newSentence").value = "";
+renderSentences();
+};
+
+renderSentences();
+
 let mediaRecorder;
-let chunks = [];
+let audioChunks = [];
 
-recordButton.addEventListener("click", async () => {
-if (mediaRecorder && mediaRecorder.state === "recording") {
-stopBeep.play();
-mediaRecorder.stop();
-recordButton.textContent = "🎙️ เริ่มพูด";
-status.textContent = "⏹️ หยุดอัดเสียงแล้ว กำลังประมวลผล...";
-} else {
+const startBeep = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAABCxAgAEABAAZGF0YYQAAACQ");
+const stopBeep = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAABCxAgAEABAAZGF0YYQAAACQ");
+
+startBtn.onclick = async () => {
 startBeep.play();
 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 mediaRecorder = new MediaRecorder(stream);
-chunks = [];
-
-mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-mediaRecorder.onstop = () => {
-const audioBlob = new Blob(chunks, { type: "audio/wav" });
-analyzePronunciation(audioBlob);
+audioChunks = [];
+mediaRecorder.start();
+mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+startBtn.disabled = true;
+stopBtn.disabled = false;
+scoreDiv.textContent = "Recording...";
 };
 
-mediaRecorder.start();
-recordButton.textContent = "⏹️ หยุดพูด";
-status.textContent = "🎤 กำลังอัดเสียง...";
+stopBtn.onclick = async () => {
+stopBeep.play();
+mediaRecorder.stop();
+mediaRecorder.onstop = async () => {
+const blob = new Blob(audioChunks, { type: 'audio/webm' });
+const arr = await blob.arrayBuffer();
+const base64 = btoa(String.fromCharCode(...new Uint8Array(arr)));
+
+const currentSentence = sentences[currentSentenceIndex];
+const res = await fetch("/api/check-pronunciation.js", {
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify({ file: base64, reference: currentSentence })
+});
+
+const data = await res.json();
+if (data.score !== undefined) {
+scoreDiv.textContent = `⭐ Score: ${data.score.toFixed(0)} / 100`;
+} else {
+scoreDiv.textContent = "Error: " + (data.error || "Unknown");
 }
+};
+startBtn.disabled = false;
+stopBtn.disabled = true;
+};
+
+async function playTTS(text) {
+const res = await fetch("/api/tts.js", {
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify({ text, voice: "alloy", lang: "en" })
 });
-
-// 🧠 ระบบให้คะแนนแบบง่าย (สุ่มเพื่อสาธิต)
-function analyzePronunciation(audioBlob) {
-status.textContent = "";
-const randomScore = Math.floor(Math.random() * 30) + 70;
-result.textContent = `⭐ คะแนนการออกเสียง: ${randomScore}/100`;
-}
-
-// 🌍 สำเนียง (ค่าเริ่มต้น: en)
-let accentLang = "en";
-
-const usAccent = document.getElementById("usAccent");
-const krAccent = document.getElementById("krAccent");
-
-usAccent.addEventListener("click", () => {
-accentLang = "en";
-usAccent.classList.add("active");
-krAccent.classList.remove("active");
-});
-
-krAccent.addEventListener("click", () => {
-accentLang = "ko";
-krAccent.classList.add("active");
-usAccent.classList.remove("active");
-});
-
-// 🔊 ฟังเสียงตัวอย่าง (ตามสำเนียง)
-const playButton = document.getElementById("playButton");
-playButton.addEventListener("click", () => {
-const sentence = targetSentence.textContent.trim();
-const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&q=${encodeURIComponent(sentence)}&tl=${accentLang}`;
-const audio = new Audio(url);
+const data = await res.json();
+if (data.audioBase64) {
+const audio = new Audio("data:audio/mpeg;base64," + data.audioBase64);
 audio.play();
-});
+}
+}
 </script>
 </body>
 </html>
