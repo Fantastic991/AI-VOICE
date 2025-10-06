@@ -22,6 +22,16 @@ select, button {
 font-size: 1em;
 padding: 10px;
 margin: 10px;
+cursor: pointer;
+}
+#accentButtons button {
+border: none;
+border-radius: 8px;
+background-color: #e0e0e0;
+}
+#accentButtons button.active {
+background-color: #007bff;
+color: white;
 }
 #result {
 margin-top: 20px;
@@ -43,6 +53,12 @@ color: #007bff;
 </select>
 
 <div id="targetSentence">My favorite country is South Korea.</div>
+
+<!-- ปุ่มเลือกสำเนียง -->
+<div id="accentButtons">
+<button id="usAccent" class="active">🇺🇸 American</button>
+<button id="krAccent">🇰🇷 Korean</button>
+</div>
 
 <!-- ปุ่มฟังเสียง AI -->
 <button id="playButton">🔈 ฟังเสียงตัวอย่าง</button>
@@ -109,11 +125,29 @@ const randomScore = Math.floor(Math.random() * 30) + 70;
 result.textContent = `⭐ คะแนนการออกเสียง: ${randomScore}/100`;
 }
 
-// 🔊 ฟังเสียงตัวอย่าง (สำเนียงอเมริกัน)
+// 🌍 สำเนียง (ค่าเริ่มต้น: en)
+let accentLang = "en";
+
+const usAccent = document.getElementById("usAccent");
+const krAccent = document.getElementById("krAccent");
+
+usAccent.addEventListener("click", () => {
+accentLang = "en";
+usAccent.classList.add("active");
+krAccent.classList.remove("active");
+});
+
+krAccent.addEventListener("click", () => {
+accentLang = "ko";
+krAccent.classList.add("active");
+usAccent.classList.remove("active");
+});
+
+// 🔊 ฟังเสียงตัวอย่าง (ตามสำเนียง)
 const playButton = document.getElementById("playButton");
 playButton.addEventListener("click", () => {
 const sentence = targetSentence.textContent.trim();
-const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&q=${encodeURIComponent(sentence)}&tl=en`;
+const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&q=${encodeURIComponent(sentence)}&tl=${accentLang}`;
 const audio = new Audio(url);
 audio.play();
 });
