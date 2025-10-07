@@ -1,99 +1,116 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🎧 AI Voice Practice</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Speak Practice</title>
   <style>
-    body { font-family: sans-serif; background: #f3f6fb; text-align: center; padding: 30px; }
-    h1 { color: #333; }
+    body {
+      font-family: "Arial", sans-serif;
+      text-align: center;
+      background: #f9f9f9;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 { margin-top: 10px; }
+    .sentence-box {
+      background: white;
+      border-radius: 10px;
+      margin: 10px auto;
+      padding: 15px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
     button {
-      padding: 10px 20px; margin: 5px; font-size: 16px;
-      border: none; border-radius: 8px; cursor: pointer;
+      margin: 5px;
+      padding: 10px 15px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background: #e3e3e3;
     }
-    #sentences { margin: 20px auto; max-width: 500px; }
-    .sentence {
-      background: #fff; padding: 15px; border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin-bottom: 10px;
+    button:hover {
+      background: #ccc;
     }
-    input {
-      padding: 8px; font-size: 16px; width: 70%;
-      border: 1px solid #ccc; border-radius: 6px;
+    #userSentence {
+      width: 80%;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
     }
-    #score { font-weight: bold; margin-top: 20px; }
+    #result {
+      margin-top: 15px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
 
-  <h1>🎧 AI Voice Practice</h1>
-  <p>เพิ่มประโยค แล้วฝึกพูดเพื่ออัดเสียงของคุณ</p>
+  <h1>🎧 AI Speak Practice</h1>
+  <p>เพิ่มประโยคที่คุณอยากฝึก แล้วพูดตามเพื่อรับคะแนน!</p>
 
-  <div id="sentences"></div>
+  <div id="sentenceList"></div>
 
-  <div id="addSentence">
-    <input id="newSentence" placeholder="พิมพ์ประโยคภาษาอังกฤษ..." />
-    <button id="addBtn">➕ เพิ่มประโยค</button>
-  </div>
+  <input type="text" id="userSentence" placeholder="พิมพ์ประโยคภาษาอังกฤษที่นี่..." />
+  <button onclick="addSentence()">➕ เพิ่มประโยค</button>
 
   <div>
-    <button id="startBtn">🎙️ Start Recording</button>
-    <button id="stopBtn" disabled>⏹️ Stop</button>
+    <button id="startBtn" onclick="startRecording()">🎙 Start Recording</button>
+    <button id="stopBtn" onclick="stopRecording()" disabled>⏹ Stop</button>
   </div>
 
-  <div id="score"></div>
+  <div id="result"></div>
 
   <script>
-    // ✨ ตัวอย่างประโยคเริ่มต้น
-    let sentences = [
-      "I love learning English every day.",
-      "My favorite place is Seoul, South Korea.",
-      "I will travel abroad next year."
-    ];
-    let currentSentenceIndex = 0;
+    const sentenceList = document.getElementById("sentenceList");
+    const result = document.getElementById("result");
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+
     let mediaRecorder;
     let audioChunks = [];
 
-    const container = document.getElementById("sentences");
-    const startBtn = document.getElementById("startBtn");
-    const stopBtn = document.getElementById("stopBtn");
-    const scoreDiv = document.getElementById("score");
+    const sentences = [
+      "My favorite country is South Korea.",
+      "I like listening to K-pop songs.",
+      "I will travel to Seoul next year."
+    ];
 
-    // แสดงประโยคทั้งหมด
     function renderSentences() {
-      container.innerHTML = "";
-      sentences.forEach((txt, i) => {
-        const div = document.createElement("div");
-        div.className = "sentence";
-        div.innerHTML = `
-          <b>${i + 1}. ${txt}</b><br>
-          <button onclick="playTTS('${txt.replace(/'/g, "\\'")}')">🔊 ฟัง</button>
-          <button onclick="selectSentence(${i})">🎯 เลือก</button>
+      sentenceList.innerHTML = "";
+      sentences.forEach((s, index) => {
+        const box = document.createElement("div");
+        box.className = "sentence-box";
+        box.innerHTML = `
+          <b>${index + 1}. ${s}</b><br>
+          <button onclick="speakSentence('${s}')">🔊 Listen</button>
+          <button onclick="chooseSentence('${s}')">🎯 Choose</button>
         `;
-        if (i === currentSentenceIndex) div.style.border = "2px solid #007bff";
-        container.appendChild(div);
+        sentenceList.appendChild(box);
       });
     }
 
-    // เลือกประโยค
-    window.selectSentence = function(index) {
-      currentSentenceIndex = index;
-      renderSentences();
-      scoreDiv.textContent = `เลือกประโยค: "${sentences[index]}"`;
-    };
+    function addSentence() {
+      const text = document.getElementById("userSentence").value.trim();
+      if (text) {
+        sentences.push(text);
+        document.getElementById("userSentence").value = "";
+        renderSentences();
+      }
+    }
 
-    // เพิ่มประโยคใหม่
-    document.getElementById("addBtn").onclick = function() {
-      const newTxt = document.getElementById("newSentence").value.trim();
-      if (!newTxt) return alert("กรุณาพิมพ์ประโยคก่อนค่ะ");
-      sentences.push(newTxt);
-      document.getElementById("newSentence").value = "";
-      renderSentences();
-    };
+    function speakSentence(sentence) {
+      const utter = new SpeechSynthesisUtterance(sentence);
+      utter.lang = "en-US";
+      speechSynthesis.speak(utter);
+    }
 
-    renderSentences();
+    function chooseSentence(sentence) {
+      result.innerHTML = `⭐ You said: "${sentence}" (Demo mode)`;
+    }
 
-    // 🎤 เริ่มอัดเสียง
-    startBtn.onclick = async function() {
+    async function startRecording() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream);
@@ -101,41 +118,31 @@
 
         mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
         mediaRecorder.onstop = () => {
-          const blob = new Blob(audioChunks, { type: "audio/webm" });
-          const url = URL.createObjectURL(blob);
-          const audio = document.createElement("audio");
-          audio.controls = true;
-          audio.src = url;
-
-          scoreDiv.innerHTML = `🎧 ฟังเสียงของคุณ:<br>`;
-          scoreDiv.appendChild(audio);
+          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+          const audioURL = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioURL);
+          audio.play();
         };
 
         mediaRecorder.start();
-        scoreDiv.textContent = "🎙️ กำลังอัดเสียง...";
         startBtn.disabled = true;
         stopBtn.disabled = false;
-      } catch (err) {
-        alert("❗ กรุณาอนุญาตให้ใช้ไมโครโฟนในเบราว์เซอร์");
-        console.error(err);
+        result.innerHTML = "🎙 กำลังอัดเสียง...";
+      } catch (error) {
+        result.innerHTML = "❌ ไม่สามารถเข้าถึงไมโครโฟนได้: " + error.message;
       }
-    };
+    }
 
-    // ⏹️ หยุดอัดเสียง
-    stopBtn.onclick = function() {
+    function stopRecording() {
       if (mediaRecorder && mediaRecorder.state !== "inactive") {
         mediaRecorder.stop();
         startBtn.disabled = false;
         stopBtn.disabled = true;
+        result.innerHTML = "✅ หยุดอัดแล้ว! กำลังเล่นเสียง...";
       }
-    };
-
-    // 🔊 ฟังเสียงตัวอย่าง
-    function playTTS(text) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "en-US"; // 🇺🇸 สำเนียงอังกฤษ (เปลี่ยนเป็น "ko-KR" สำหรับสำเนียงเกาหลี)
-      speechSynthesis.speak(utterance);
     }
+
+    renderSentences();
   </script>
 
 </body>
