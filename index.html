@@ -1,78 +1,122 @@
-"use client";
-import React, { useState, useRef } from "react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Speak Practice</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 20px; background: #f9fafc; }
+    h1 { margin-bottom: 10px; }
+    button { margin: 5px; padding: 10px 20px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; }
+    #score { font-size: 22px; margin-top: 15px; font-weight: bold; white-space: pre-line; }
+    .sentence { margin: 15px auto; font-size: 20px; background: #fff; border-radius: 8px; padding: 10px; width: 90%; max-width: 500px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    input { padding: 8px; width: 70%; border-radius: 6px; border: 1px solid #ccc; font-size: 16px; }
+  </style>
+</head>
+<body>
+<h1>🎧 AI Speak Practice</h1>
+<p>พูดตามประโยคภาษาอังกฤษและรับคะแนน!</p>
 
-export default function Home() {
-  const [sentence, setSentence] = useState("I like to travel around the world.");
-  const [score, setScore] = useState(null);
-  const [recording, setRecording] = useState(false);
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
+<div id="sentences"></div>
 
-  // 🎧 ฟังเสียง AI (Text-to-Speech)
-  const playAIvoice = async () => {
-    const res = await fetch("/api/tts", {
+<div>
+  <input id="newSentence" placeholder="พิมพ์ประโยคภาษาอังกฤษที่นี่..." />
+  <button id="addBtn">➕ เพิ่มประโยค</button>
+</div>
+
+<button id="startBtn">🎙️ Start Recording</button>
+<button id="stopBtn" disabled>⏹️ Stop</button>
+
+<div id="score"></div>
+
+<script>
+let sentences = [
+  "My favorite country is South Korea.",
+  "I like listening to K-pop songs.",
+  "I will travel to Seoul next year."
+];
+let currentSentenceIndex = 0;
+const container = document.getElementById('sentences');
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const scoreDiv = document.getElementById("score");
+
+function renderSentences() {
+  container.innerHTML = "";
+  sentences.forEach((txt, i) => {
+    const div = document.createElement('div');
+    div.className = 'sentence';
+    div.innerHTML = `
+      <b>${i+1}. ${txt}</b><br>
+      <button onclick="playTTS('${txt.replace(/'/g, "\\'")}')">🔊 Listen</button>
+      <button onclick="selectSentence(${i})">🎯 Choose</button>
+    `;
+    if (i === currentSentenceIndex) div.style.border = "2px solid #007bff";
+    container.appendChild(div);
+  });
+}
+window.selectSentence = (index) => {
+  currentSentenceIndex = index;
+  renderSentences();
+  scoreDiv.textContent = `Selected: "${sentences[index]}"`;
+};
+document.getElementById("addBtn").onclick = () => {
+  const newTxt = document.getElementById("newSentence").value.trim();
+  if (!newTxt) return alert("กรุณาพิมพ์ประโยคก่อนค่ะ");
+  sentences.push(newTxt);
+  document.getElementById("newSentence").value = "";
+  renderSentences();
+};
+renderSentences();
+
+let mediaRecorder;
+let audioChunks = [];
+startBtn.onclick = async () => {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  mediaRecorder = new MediaRecorder(stream);
+  audioChunks = [];
+  mediaRecorder.start();
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+  scoreDiv.textContent = "🎤 Recording...";
+  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+};
+stopBtn.onclick = async () => {
+  mediaRecorder.stop();
+  mediaRecorder.onstop = async () => {
+    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+    const arr = await blob.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arr)));
+    const currentSentence = sentences[currentSentenceIndex];
+    const res = await fetch("/api/evaluate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: sentence }),
+      body: JSON.stringify({ file: base64, reference: currentSentence })
     });
-    const blob = await res.blob();
-    const audioUrl = URL.createObjectURL(blob);
-    const audio = new Audio(audioUrl);
-    audio.play();
+    const data = await res.json();
+    if (data.score !== undefined) {
+      scoreDiv.textContent = `⭐ Score: ${data.score}/100\n💬 ${data.feedback}`;
+    } else {
+      scoreDiv.textContent = "❌ Error: " + (data.error || "Unknown");
+    }
   };
-
-  // 🎙️ บันทึกเสียงพูดของผู้ใช้
-  const startRecording = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const mediaRecorder = new MediaRecorder(stream);
-    mediaRecorderRef.current = mediaRecorder;
-    audioChunksRef.current = [];
-
-    mediaRecorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
-    mediaRecorder.onstop = async () => {
-      const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-      const formData = new FormData();
-      formData.append("audio", audioBlob);
-      formData.append("text", sentence);
-
-      const res = await fetch("/api/evaluate", { method: "POST", body: formData });
-      const data = await res.json();
-      setScore(data.score || "Error");
-    };
-
-    mediaRecorder.start();
-    setRecording(true);
-  };
-
-  const stopRecording = () => {
-    mediaRecorderRef.current.stop();
-    setRecording(false);
-  };
-
-  return (
-    <div style={{ textAlign: "center", padding: 20 }}>
-      <h1>🎧 AI Voice Practice</h1>
-      <p>ประโยคตัวอย่าง:</p>
-      <textarea
-        value={sentence}
-        onChange={(e) => setSentence(e.target.value)}
-        rows="2"
-        style={{ width: "80%", fontSize: "16px" }}
-      />
-      <div style={{ marginTop: 20 }}>
-        <button onClick={playAIvoice}>🔊 ฟังเสียง AI</button>
-        {!recording ? (
-          <button onClick={startRecording}>🎙️ เริ่มอัดเสียง</button>
-        ) : (
-          <button onClick={stopRecording}>⏹️ หยุดอัดเสียง</button>
-        )}
-      </div>
-
-      {score && (
-        <h2 style={{ marginTop: 20 }}>
-          ✅ คะแนนการออกเสียง: <span>{score}</span>
-        </h2>
-      )}
-    </div>
-  );
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+};
+async function playTTS(text) {
+  const res = await fetch("/api/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text })
+  });
+  if (res.ok) {
+    const audioBlob = await res.blob();
+    const url = URL.createObjectURL(audioBlob);
+    new Audio(url).play();
+  } else {
+    alert("TTS Error");
+  }
 }
+</script>
+</body>
+</html>
