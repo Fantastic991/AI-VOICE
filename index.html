@@ -30,6 +30,7 @@ input { padding: 8px; width: 70%; border-radius: 6px; border: 1px solid #ccc; fo
 <button id="stopBtn" disabled>⏹️ Stop</button>
 
 <div id="score"></div>
+<audio id="playback" controls></audio>
 
 <script>
 let sentences = [
@@ -43,6 +44,7 @@ const container = document.getElementById('sentences');
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
 const scoreDiv = document.getElementById("score");
+const playback = document.getElementById("playback");
 
 function renderSentences() {
   container.innerHTML = "";
@@ -75,109 +77,53 @@ document.getElementById("addBtn").onclick = () => {
 
 renderSentences();
 
+// 🔊 ระบบอัดเสียง
 let mediaRecorder;
 let audioChunks = [];
 
-const startBeep = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAABCxAgAEABAAZGF0YYQAAACQ");
-const stopBeep = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAABCxAgAEABAAZGF0YYQAAACQ");
-
 startBtn.onclick = async () => {
-  startBeep.play();
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  mediaRecorder = new MediaRecorder(stream);
-  audioChunks = [];
-  mediaRecorder.start();
-  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
-  scoreDiv.textContent = "Recording...";
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      playback.src = URL.createObjectURL(blob);
+
+      // ตัวอย่างการตรวจออกเสียง (mock)
+      const currentSentence = sentences[currentSentenceIndex];
+      scoreDiv.textContent = `⭐ You said: "${currentSentence}" (Demo mode)`;
+    };
+
+    mediaRecorder.start();
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    scoreDiv.textContent = "🎙️ Recording...";
+  } catch (err) {
+    alert("กรุณาอนุญาตให้ใช้ไมโครโฟนในเบราว์เซอร์ค่ะ");
+    console.error(err);
+  }
 };
 
-stopBtn.onclick = async () => {
-  stopBeep.play();
-  mediaRecorder.stop();
-  mediaRecorder.onstop = async () => {
-    const blob = new Blob(audioChunks, { type: 'audio/webm' });
-    const arr = await blob.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arr)));
-
-    // ตัวอย่างการตรวจออกเสียง (mock)
-    const currentSentence = sentences[currentSentenceIndex];
-    scoreDiv.textContent = `⭐ You said: "${currentSentence}" (Demo mode)`;
-  };
-  startBtn.disabled = false;
-  stopBtn.disabled = true;
+stopBtn.onclick = () => {
+  if (mediaRecorder && mediaRecorder.state === "recording") {
+    mediaRecorder.stop();
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+  }
 };
 
-// ✅ ใช้เสียงจากเบราว์เซอร์ (ไม่ต้องใช้ API)
+// ✅ ระบบอ่านออกเสียงจากเบราว์เซอร์
 async function playTTS(text) {
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "en-US"; // 🇺🇸 เปลี่ยนเป็น "ko-KR" ถ้าอยากได้สำเนียงเกาหลี
-  utterance.rate = 1; // ความเร็ว
-  utterance.pitch = 1; // โทนเสียง
+  utterance.lang = "en-US"; // 🇺🇸 เปลี่ยนเป็น "ko-KR" หากต้องการสำเนียงเกาหลี
+  utterance.rate = 1;
+  utterance.pitch = 1;
   speechSynthesis.speak(utterance);
 }
-</script>
-<h2>🎙️ ทดสอบไมค์อัดเสียง</h2>
-<button id="startBtn">เริ่มอัดเสียง</button>
-<button id="stopBtn" disabled>หยุดอัดเสียง</button>
-<audio id="playback" controls></audio>
-
-<script>
-  let mediaRecorder;
-  let audioChunks = [];
-
-  async function initMic() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
-
-      mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
-
-      mediaRecorder.onstop = async () => {
-        const blob = new Blob(audioChunks, { type: "audio/webm" });
-        const base64Audio = await toBase64(blob);
-
-        // 🔹 ส่งไฟล์เสียงไป API check-pronunciation
-        await fetch("/api/check-pronunciation", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            file: base64Audio.split(",")[1],
-            reference: "hello world"
-          })
-        });
-
-        document.getElementById("playback").src = URL.createObjectURL(blob);
-        audioChunks = [];
-      };
-    } catch (err) {
-      alert("กรุณาอนุญาตให้ใช้ไมโครโฟนในเบราว์เซอร์");
-      console.error(err);
-    }
-  }
-
-  function toBase64(blob) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  }
-
-  document.getElementById("startBtn").onclick = async () => {
-    await initMic();
-    mediaRecorder.start();
-    document.getElementById("startBtn").disabled = true;
-    document.getElementById("stopBtn").disabled = false;
-  };
-
-  document.getElementById("stopBtn").onclick = () => {
-    mediaRecorder.stop();
-    document.getElementById("startBtn").disabled = false;
-    document.getElementById("stopBtn").disabled = true;
-  };
 </script>
 </body>
 </html>
