@@ -1,32 +1,78 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Voice Pronunciation</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <div class="container">
-    <h1>🎙️ AI Voice Pronunciation</h1>
-    <p>ฝึกพูดภาษาอังกฤษด้วย AI เหมือนแอป Elsa Speak</p>
+"use client";
+import React, { useState, useRef } from "react";
 
-    <div class="sentence-box">
-      <label for="sentence">ตัวอย่างประโยคภาษาอังกฤษ</label>
-      <input type="text" id="sentence" value="I would like a cup of coffee, please." />
-      <button id="addSentence">➕ เพิ่มประโยค</button>
+export default function Home() {
+  const [sentence, setSentence] = useState("I like to travel around the world.");
+  const [score, setScore] = useState(null);
+  const [recording, setRecording] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+
+  // 🎧 ฟังเสียง AI (Text-to-Speech)
+  const playAIvoice = async () => {
+    const res = await fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: sentence }),
+    });
+    const blob = await res.blob();
+    const audioUrl = URL.createObjectURL(blob);
+    const audio = new Audio(audioUrl);
+    audio.play();
+  };
+
+  // 🎙️ บันทึกเสียงพูดของผู้ใช้
+  const startRecording = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mediaRecorder = new MediaRecorder(stream);
+    mediaRecorderRef.current = mediaRecorder;
+    audioChunksRef.current = [];
+
+    mediaRecorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
+    mediaRecorder.onstop = async () => {
+      const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+      const formData = new FormData();
+      formData.append("audio", audioBlob);
+      formData.append("text", sentence);
+
+      const res = await fetch("/api/evaluate", { method: "POST", body: formData });
+      const data = await res.json();
+      setScore(data.score || "Error");
+    };
+
+    mediaRecorder.start();
+    setRecording(true);
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current.stop();
+    setRecording(false);
+  };
+
+  return (
+    <div style={{ textAlign: "center", padding: 20 }}>
+      <h1>🎧 AI Voice Practice</h1>
+      <p>ประโยคตัวอย่าง:</p>
+      <textarea
+        value={sentence}
+        onChange={(e) => setSentence(e.target.value)}
+        rows="2"
+        style={{ width: "80%", fontSize: "16px" }}
+      />
+      <div style={{ marginTop: 20 }}>
+        <button onClick={playAIvoice}>🔊 ฟังเสียง AI</button>
+        {!recording ? (
+          <button onClick={startRecording}>🎙️ เริ่มอัดเสียง</button>
+        ) : (
+          <button onClick={stopRecording}>⏹️ หยุดอัดเสียง</button>
+        )}
+      </div>
+
+      {score && (
+        <h2 style={{ marginTop: 20 }}>
+          ✅ คะแนนการออกเสียง: <span>{score}</span>
+        </h2>
+      )}
     </div>
-
-    <ul id="sentenceList"></ul>
-
-    <div class="record-section">
-      <button id="recordBtn">🎤 เริ่มอัดเสียง</button>
-      <button id="stopBtn" disabled>⏹ หยุด</button>
-    </div>
-
-    <div id="result"></div>
-  </div>
-
-  <script src="main.js"></script>
-</body>
-</html>
+  );
+}
