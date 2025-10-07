@@ -1,26 +1,4 @@
-let mediaRecorder;
-let audioChunks = [];
-const startBtn = document.getElementById("startBtn");
-const stopBtn = document.getElementById("stopBtn");
-const playback = document.getElementById("playback");
-const scoreDiv = document.getElementById("scoreDiv");
-const sentences = ["Hello, how are you?", "I like learning English."];
-let currentSentenceIndex = 0;
-
-startBtn.onclick = async () => {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  mediaRecorder = new MediaRecorder(stream);
-  audioChunks = [];
-
-  mediaRecorder.ondataavailable = (e) => {
-    audioChunks.push(e.data);
-  };
-
-  mediaRecorder.start();
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
-};
-
+// ✅ ฟังก์ชันแปลง blob → base64
 function toBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -30,6 +8,38 @@ function toBase64(blob) {
   });
 }
 
+// ✅ ตั้งค่าปุ่มและองค์ประกอบในหน้า HTML
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const playback = document.getElementById("playback");
+const scoreDiv = document.getElementById("score");
+
+let mediaRecorder;
+let audioChunks = [];
+let currentSentenceIndex = 0;
+
+const sentences = [
+  "Hello, how are you?",
+  "I like to travel to Korea.",
+  "This is my English pronunciation test."
+];
+
+// ✅ เริ่มอัดเสียง
+startBtn.onclick = async () => {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  mediaRecorder = new MediaRecorder(stream);
+  mediaRecorder.start();
+  audioChunks = [];
+
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+
+  mediaRecorder.ondataavailable = (event) => {
+    audioChunks.push(event.data);
+  };
+};
+
+// ✅ หยุดอัดและส่งไปตรวจ
 stopBtn.onclick = async () => {
   mediaRecorder.stop();
   startBtn.disabled = false;
