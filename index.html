@@ -1,15 +1,40 @@
-export default function Home() {
-  return (
-    <div>
-      <h2>🎤 AI ตรวจการออกเสียง</h2>
-      <button id="startBtn">🎙️ Start</button>
-      <button id="stopBtn" disabled>⏹️ Stop</button>
-      <audio id="playback" controls></audio>
-      <div id="scoreDiv"></div>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI ตรวจการออกเสียง</title>
+  <style>
+    body {
+      font-family: "Prompt", sans-serif;
+      text-align: center;
+      margin-top: 50px;
+    }
+    button {
+      font-size: 18px;
+      padding: 10px 20px;
+      margin: 10px;
+    }
+    #score {
+      margin-top: 20px;
+      font-size: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h2>🎤 AI ตรวจการออกเสียง</h2>
 
-      {/* ✅ เรียกใช้ไฟล์ main.js จากโฟลเดอร์ public */}
-      <script src="/main.js"></script>
-    </div>
-  );
-}
-<script src="main.js"></script>
+  <p id="sentence">"Hello, how are you?"</p>
+
+  <button id="start">Start</button>
+  <button id="stop" disabled>Stop</button>
+
+  <br />
+  <audio id="playback" controls></audio>
+
+  <div id="score"></div>
+
+  <!-- ✅ เรียก main.js -->
+  <script src="main.js"></script>
+</body>
+</html>
