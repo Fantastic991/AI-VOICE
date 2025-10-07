@@ -1,149 +1,177 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Speak Practice</title>
-  <style>
-    body {
-      font-family: "Arial", sans-serif;
-      text-align: center;
-      background: #f9f9f9;
-      margin: 0;
-      padding: 20px;
-    }
-    h1 { margin-top: 10px; }
-    .sentence-box {
-      background: white;
-      border-radius: 10px;
-      margin: 10px auto;
-      padding: 15px;
-      width: 90%;
-      max-width: 400px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    button {
-      margin: 5px;
-      padding: 10px 15px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      background: #e3e3e3;
-    }
-    button:hover {
-      background: #ccc;
-    }
-    #userSentence {
-      width: 80%;
-      padding: 8px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-    }
-    #result {
-      margin-top: 15px;
-      font-weight: bold;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎧 AI Speak Practice</title>
+<style>
+body {
+  font-family: 'Arial', sans-serif;
+  text-align: center;
+  padding: 20px;
+  background: #f7f9fc;
+}
+h1 { margin-bottom: 10px; }
+button {
+  margin: 5px;
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+#score { font-size: 18px; margin-top: 15px; font-weight: bold; }
+audio { margin-top: 15px; }
+.sentence {
+  margin: 15px auto;
+  font-size: 20px;
+  background: #fff;
+  border-radius: 8px;
+  padding: 10px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+#addSentence { margin-top: 20px; }
+input {
+  padding: 8px;
+  width: 70%;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+}
+</style>
 </head>
+
 <body>
+<h1>🎧 AI Speak Practice</h1>
+<p>เพิ่มประโยคที่คุณอยากฝึก แล้วพูดตามเพื่อรับคะแนน!</p>
 
-  <h1>🎧 AI Speak Practice</h1>
-  <p>เพิ่มประโยคที่คุณอยากฝึก แล้วพูดตามเพื่อรับคะแนน!</p>
+<div id="sentences"></div>
 
-  <div id="sentenceList"></div>
+<div id="addSentence">
+  <input id="newSentence" placeholder="พิมพ์ประโยคภาษาอังกฤษที่นี่..." />
+  <button id="addBtn">➕ เพิ่มประโยค</button>
+</div>
 
-  <input type="text" id="userSentence" placeholder="พิมพ์ประโยคภาษาอังกฤษที่นี่..." />
-  <button onclick="addSentence()">➕ เพิ่มประโยค</button>
+<br />
+<button id="startBtn">🎙️ Start Recording</button>
+<button id="stopBtn" disabled>⏹️ Stop</button>
 
-  <div>
-    <button id="startBtn" onclick="startRecording()">🎙 Start Recording</button>
-    <button id="stopBtn" onclick="stopRecording()" disabled>⏹ Stop</button>
-  </div>
+<div id="score"></div>
+<audio id="playback" controls></audio>
 
-  <div id="result"></div>
+<script>
+let sentences = [
+  "My favorite country is South Korea.",
+  "I like listening to K-pop songs.",
+  "I will travel to Seoul next year."
+];
+let currentSentenceIndex = 0;
 
-  <script>
-    const sentenceList = document.getElementById("sentenceList");
-    const result = document.getElementById("result");
-    const startBtn = document.getElementById("startBtn");
-    const stopBtn = document.getElementById("stopBtn");
+const container = document.getElementById('sentences');
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const scoreDiv = document.getElementById("score");
+const playback = document.getElementById("playback");
 
-    let mediaRecorder;
-    let audioChunks = [];
+function renderSentences() {
+  container.innerHTML = "";
+  sentences.forEach((txt, i) => {
+    const div = document.createElement('div');
+    div.className = 'sentence';
+    div.innerHTML = `
+      <b>${i+1}. ${txt}</b><br>
+      <button onclick="playTTS('${txt.replace(/'/g, "\\'")}')">🔊 Listen</button>
+      <button onclick="selectSentence(${i})">🎯 Choose</button>
+    `;
+    if (i === currentSentenceIndex) div.style.border = "2px solid #007bff";
+    container.appendChild(div);
+  });
+}
 
-    const sentences = [
-      "My favorite country is South Korea.",
-      "I like listening to K-pop songs.",
-      "I will travel to Seoul next year."
-    ];
+window.selectSentence = (index) => {
+  currentSentenceIndex = index;
+  renderSentences();
+  scoreDiv.textContent = `Selected: "${sentences[index]}"`;
+};
 
-    function renderSentences() {
-      sentenceList.innerHTML = "";
-      sentences.forEach((s, index) => {
-        const box = document.createElement("div");
-        box.className = "sentence-box";
-        box.innerHTML = `
-          <b>${index + 1}. ${s}</b><br>
-          <button onclick="speakSentence('${s}')">🔊 Listen</button>
-          <button onclick="chooseSentence('${s}')">🎯 Choose</button>
-        `;
-        sentenceList.appendChild(box);
+document.getElementById("addBtn").onclick = () => {
+  const newTxt = document.getElementById("newSentence").value.trim();
+  if (!newTxt) return alert("กรุณาพิมพ์ประโยคก่อนค่ะ");
+  sentences.push(newTxt);
+  document.getElementById("newSentence").value = "";
+  renderSentences();
+};
+
+renderSentences();
+
+let mediaRecorder;
+let audioChunks = [];
+
+async function initMic() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+
+    mediaRecorder.onstop = async () => {
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      playback.src = URL.createObjectURL(blob);
+
+      // แปลงเสียงเป็น Base64 เพื่อส่งไป API
+      const base64Audio = await toBase64(blob);
+      const response = await fetch("/api/check-pronunciation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          file: base64Audio.split(",")[1],
+          reference: sentences[currentSentenceIndex]
+        })
       });
-    }
 
-    function addSentence() {
-      const text = document.getElementById("userSentence").value.trim();
-      if (text) {
-        sentences.push(text);
-        document.getElementById("userSentence").value = "";
-        renderSentences();
-      }
-    }
+      const result = await response.json();
+      scoreDiv.innerHTML = `⭐ Pronunciation Result:<br>${result.result}`;
+    };
+  } catch (err) {
+    alert("❗ กรุณาอนุญาตให้ใช้ไมโครโฟน");
+    console.error(err);
+  }
+}
 
-    function speakSentence(sentence) {
-      const utter = new SpeechSynthesisUtterance(sentence);
-      utter.lang = "en-US";
-      speechSynthesis.speak(utter);
-    }
+function toBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 
-    function chooseSentence(sentence) {
-      result.innerHTML = `⭐ You said: "${sentence}" (Demo mode)`;
-    }
+startBtn.onclick = async () => {
+  await initMic();
+  mediaRecorder.start();
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+  scoreDiv.textContent = "Recording...";
+};
 
-    async function startRecording() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
+stopBtn.onclick = () => {
+  mediaRecorder.stop();
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+};
 
-        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-        mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-          const audioURL = URL.createObjectURL(audioBlob);
-          const audio = new Audio(audioURL);
-          audio.play();
-        };
-
-        mediaRecorder.start();
-        startBtn.disabled = true;
-        stopBtn.disabled = false;
-        result.innerHTML = "🎙 กำลังอัดเสียง...";
-      } catch (error) {
-        result.innerHTML = "❌ ไม่สามารถเข้าถึงไมโครโฟนได้: " + error.message;
-      }
-    }
-
-    function stopRecording() {
-      if (mediaRecorder && mediaRecorder.state !== "inactive") {
-        mediaRecorder.stop();
-        startBtn.disabled = false;
-        stopBtn.disabled = true;
-        result.innerHTML = "✅ หยุดอัดแล้ว! กำลังเล่นเสียง...";
-      }
-    }
-
-    renderSentences();
-  </script>
-
+// ✅ ใช้เสียงจากเบราว์เซอร์ (Text-to-Speech)
+async function playTTS(text) {
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "en-US"; // 🇺🇸 เปลี่ยนเป็น "ko-KR" ได้
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  speechSynthesis.speak(utterance);
+}
+</script>
 </body>
 </html>
