@@ -12,12 +12,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { text, voice } = req.body;
+    const { text } = req.body;
 
     const mp3 = await openai.audio.speech.create({
       model: "gpt-4o-mini-tts",
-      voice: voice || "alloy", // 👈 ค่าเริ่มต้น ถ้าไม่ได้เลือก
-      input: text || "Hello!",
+      voice: "alloy",
+      input: text || "Hello, how are you?",
     });
 
     const buffer = Buffer.from(await mp3.arrayBuffer());
