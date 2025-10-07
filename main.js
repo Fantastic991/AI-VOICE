@@ -1,3 +1,15 @@
+let mediaRecorder;
+let audioChunks = [];
+
+const startBtn = document.getElementById("start");
+const stopBtn = document.getElementById("stop");
+const playback = document.getElementById("playback");
+const scoreDiv = document.getElementById("score");
+const sentence = document.getElementById("sentence");
+
+const sentences = ["Hello, how are you?"];
+let currentSentenceIndex = 0;
+
 // ✅ ฟังก์ชันแปลง blob → base64
 function toBase64(blob) {
   return new Promise((resolve, reject) => {
@@ -8,32 +20,18 @@ function toBase64(blob) {
   });
 }
 
-let mediaRecorder;
-let audioChunks = [];
-
-const startBtn = document.getElementById("startBtn");
-const stopBtn = document.getElementById("stopBtn");
-const playback = document.getElementById("playback");
-const scoreDiv = document.getElementById("score");
-
+// 🎙️ เริ่มอัดเสียง
 startBtn.onclick = async () => {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream);
-    audioChunks = [];
-    mediaRecorder.start();
-    startBtn.disabled = true;
-    stopBtn.disabled = false;
-
-    scoreDiv.textContent = "🎙️ Recording...";
-
-    mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
-  } catch (err) {
-    alert("กรุณาอนุญาตให้ใช้ไมโครโฟน");
-    console.error(err);
-  }
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  mediaRecorder = new MediaRecorder(stream);
+  audioChunks = [];
+  mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+  mediaRecorder.start();
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
 };
 
+// ⏹️ หยุดอัดเสียง
 stopBtn.onclick = async () => {
   mediaRecorder.stop();
   startBtn.disabled = false;
@@ -44,7 +42,9 @@ stopBtn.onclick = async () => {
     playback.src = URL.createObjectURL(blob);
 
     const base64 = await toBase64(blob);
-    const base64Data = base64.split(",")[1];
+    const base64Data = base64.split(",")[1]; // ตัดส่วน data: ออก
+
+    scoreDiv.innerHTML = "⏳ กำลังประเมินเสียง...";
 
     try {
       const resp = await fetch("/api/check-pronunciation", {
@@ -52,18 +52,18 @@ stopBtn.onclick = async () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           file: base64Data,
-          reference: "Hello world"
-        })
+          reference: sentences[currentSentenceIndex],
+        }),
       });
+
       const j = await resp.json();
       if (resp.ok) {
-        scoreDiv.innerHTML = `✅ ${j.result}`;
+        scoreDiv.innerHTML = `🎯 ผลลัพธ์: ${j.result}`;
       } else {
         scoreDiv.innerHTML = `❌ Error: ${j.error}`;
       }
     } catch (err) {
-      console.error("Fetch API error:", err);
-      scoreDiv.innerHTML = `❌ Fetch failed: ${err.message}`;
+      scoreDiv.innerHTML = `⚠️ Fetch failed: ${err.message}`;
     }
   };
 };
