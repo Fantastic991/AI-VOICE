@@ -1,36 +1,28 @@
-// api/tts.js
 import OpenAI from "openai";
+import fs from "fs";
+import path from "path";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // ดึงคีย์จาก Environment Variable
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+  if (req.method !== "POST")
+    return res.status(405).json({ error: "Only POST allowed" });
 
   try {
     const { text } = req.body;
-
-    if (!text) {
-      return res.status(400).json({ error: "Missing text input" });
-    }
-
-    // สร้างเสียงพูดจากข้อความ
-    const response = await client.audio.speech.create({
+    const mp3 = await openai.audio.speech.create({
       model: "gpt-4o-mini-tts",
-      voice: "alloy", // เสียงพูด (เปลี่ยนได้ เช่น verse, nova, coral)
+      voice: "alloy",
       input: text,
     });
 
-    // แปลงเสียงเป็น Buffer แล้วส่งกลับ
-    const audioBuffer = Buffer.from(await response.arrayBuffer());
+    const buffer = Buffer.from(await mp3.arrayBuffer());
     res.setHeader("Content-Type", "audio/mpeg");
-    res.send(audioBuffer);
-
+    res.send(buffer);
   } catch (error) {
     console.error("TTS Error:", error);
-    res.status(500).json({ error: "Failed to generate speech" });
+    res.status(500).json({ error: error.message });
   }
 }
