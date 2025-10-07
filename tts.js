@@ -7,20 +7,25 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req, res) {
-  if (req.method !== "POST")
-    return res.status(405).json({ error: "Only POST allowed" });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Only POST method allowed" });
+  }
 
   try {
-    const { text } = req.body;
+    const { text, voice } = req.body;
+
     const mp3 = await openai.audio.speech.create({
       model: "gpt-4o-mini-tts",
-      voice: "alloy",
-      input: text,
+      voice: voice || "alloy", // 👈 ค่าเริ่มต้น ถ้าไม่ได้เลือก
+      input: text || "Hello!",
     });
 
     const buffer = Buffer.from(await mp3.arrayBuffer());
+    const filePath = path.join("/tmp", "output.mp3");
+    fs.writeFileSync(filePath, buffer);
+
     res.setHeader("Content-Type", "audio/mpeg");
-    res.send(buffer);
+    fs.createReadStream(filePath).pipe(res);
   } catch (error) {
     console.error("TTS Error:", error);
     res.status(500).json({ error: error.message });
