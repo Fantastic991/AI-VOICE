@@ -5,33 +5,31 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req, res) {
-  if (req.method !== "POST")
-    return res.status(405).json({ error: "Only POST allowed" });
-
   try {
     const { file, reference } = req.body;
-    const audioBuffer = Buffer.from(file, "base64");
+    if (!file) return res.status(400).json({ error: "No audio provided" });
 
-    // แปลงเสียงเป็นข้อความ
+    // แปลงเสียงเป็นข้อความ (Speech-to-Text)
+    const buffer = Buffer.from(file, "base64");
     const transcription = await openai.audio.transcriptions.create({
-      file: new File([audioBuffer], "speech.webm", { type: "audio/webm" }),
+      file: new File([buffer], "audio.webm", { type: "audio/webm" }),
       model: "gpt-4o-mini-transcribe",
     });
 
     const userSpeech = transcription.text || "";
 
-    // ให้ AI ให้คะแนน
+    // ให้คะแนนเสียง
     const evaluation = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
           content:
-            "You are an English pronunciation evaluator. Compare user's speech with the target and score 0–100 with one short feedback sentence.",
+            "You are an English pronunciation evaluator. Compare the user's speech text with the target sentence and score from 0-100 with one sentence of feedback.",
         },
         {
           role: "user",
-          content: `Target: "${reference}"\nUser said: "${userSpeech}"`,
+          content: `Target: "${reference}"\nUser said: "${userSpeech}"\nPlease score pronunciation and fluency.`,
         },
       ],
     });
@@ -42,7 +40,7 @@ export default async function handler(req, res) {
 
     res.status(200).json({ score, feedback: result });
   } catch (error) {
-    console.error("Evaluation Error:", error);
+    console.error("Evaluate Error:", error);
     res.status(500).json({ error: error.message });
   }
 }
