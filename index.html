@@ -1,31 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Speak Practice</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; padding: 20px; background: #f9fafc; }
-    h1 { margin-bottom: 10px; }
-    button { margin: 5px; padding: 10px 20px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; }
-    #score { font-size: 22px; margin-top: 15px; font-weight: bold; white-space: pre-line; }
-    .sentence { margin: 15px auto; font-size: 20px; background: #fff; border-radius: 8px; padding: 10px; width: 90%; max-width: 500px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    input { padding: 8px; width: 70%; border-radius: 6px; border: 1px solid #ccc; font-size: 16px; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Voice Practice</title>
+<style>
+body {
+  font-family: sans-serif;
+  text-align: center;
+  background: #f3f6fa;
+  padding: 20px;
+}
+h1 { color: #333; }
+button {
+  padding: 10px 18px;
+  margin: 5px;
+  border: none;
+  border-radius: 8px;
+  background: #007bff;
+  color: white;
+  cursor: pointer;
+}
+button:disabled {
+  background: #ccc;
+}
+.sentence {
+  background: #fff;
+  margin: 10px auto;
+  padding: 10px;
+  width: 90%;
+  max-width: 500px;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+#score { font-size: 20px; font-weight: bold; margin-top: 15px; }
+</style>
 </head>
 <body>
-<h1>🎧 AI Speak Practice</h1>
-<p>พูดตามประโยคภาษาอังกฤษและรับคะแนน!</p>
+<h1>🎙️ AI Voice Practice</h1>
+<p>พิมพ์ประโยคภาษาอังกฤษ แล้วพูดตามเพื่อรับคะแนน!</p>
+
+<div>
+  <input id="sentenceInput" placeholder="พิมพ์ประโยคภาษาอังกฤษ..." style="width:70%;padding:8px;border-radius:6px;border:1px solid #ccc;" />
+  <button id="addBtn">เพิ่ม</button>
+</div>
 
 <div id="sentences"></div>
 
-<div>
-  <input id="newSentence" placeholder="พิมพ์ประโยคภาษาอังกฤษที่นี่..." />
-  <button id="addBtn">➕ เพิ่มประโยค</button>
-</div>
-
-<button id="startBtn">🎙️ Start Recording</button>
-<button id="stopBtn" disabled>⏹️ Stop</button>
+<button id="recordBtn">🎤 Start Recording</button>
+<button id="stopBtn" disabled>⏹ Stop</button>
 
 <div id="score"></div>
 
@@ -35,86 +58,86 @@ let sentences = [
   "I like listening to K-pop songs.",
   "I will travel to Seoul next year."
 ];
-let currentSentenceIndex = 0;
-const container = document.getElementById('sentences');
-const startBtn = document.getElementById("startBtn");
-const stopBtn = document.getElementById("stopBtn");
+let selected = 0;
+let recorder, chunks = [];
+
+const container = document.getElementById("sentences");
 const scoreDiv = document.getElementById("score");
 
-function renderSentences() {
+function render() {
   container.innerHTML = "";
-  sentences.forEach((txt, i) => {
-    const div = document.createElement('div');
-    div.className = 'sentence';
+  sentences.forEach((s, i) => {
+    const div = document.createElement("div");
+    div.className = "sentence";
     div.innerHTML = `
-      <b>${i+1}. ${txt}</b><br>
-      <button onclick="playTTS('${txt.replace(/'/g, "\\'")}')">🔊 Listen</button>
-      <button onclick="selectSentence(${i})">🎯 Choose</button>
+      <b>${i+1}. ${s}</b><br>
+      <button onclick="playTTS('${s.replace(/'/g,"\\'")}')">🔊 ฟังเสียง</button>
+      <button onclick="choose(${i})">🎯 เลือก</button>
     `;
-    if (i === currentSentenceIndex) div.style.border = "2px solid #007bff";
+    if (i === selected) div.style.border = "2px solid #007bff";
     container.appendChild(div);
   });
 }
-window.selectSentence = (index) => {
-  currentSentenceIndex = index;
-  renderSentences();
-  scoreDiv.textContent = `Selected: "${sentences[index]}"`;
-};
+function choose(i) {
+  selected = i;
+  scoreDiv.textContent = "เลือกประโยค: " + sentences[i];
+  render();
+}
 document.getElementById("addBtn").onclick = () => {
-  const newTxt = document.getElementById("newSentence").value.trim();
-  if (!newTxt) return alert("กรุณาพิมพ์ประโยคก่อนค่ะ");
-  sentences.push(newTxt);
-  document.getElementById("newSentence").value = "";
-  renderSentences();
+  const val = document.getElementById("sentenceInput").value.trim();
+  if (!val) return alert("กรุณาพิมพ์ประโยค");
+  sentences.push(val);
+  document.getElementById("sentenceInput").value = "";
+  render();
 };
-renderSentences();
+render();
 
-let mediaRecorder;
-let audioChunks = [];
-startBtn.onclick = async () => {
+document.getElementById("recordBtn").onclick = async () => {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  mediaRecorder = new MediaRecorder(stream);
-  audioChunks = [];
-  mediaRecorder.start();
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
-  scoreDiv.textContent = "🎤 Recording...";
-  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+  recorder = new MediaRecorder(stream);
+  chunks = [];
+  recorder.start();
+  document.getElementById("recordBtn").disabled = true;
+  document.getElementById("stopBtn").disabled = false;
+  scoreDiv.textContent = "🎤 กำลังบันทึก...";
+  recorder.ondataavailable = e => chunks.push(e.data);
 };
-stopBtn.onclick = async () => {
-  mediaRecorder.stop();
-  mediaRecorder.onstop = async () => {
-    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+document.getElementById("stopBtn").onclick = async () => {
+  recorder.stop();
+  recorder.onstop = async () => {
+    const blob = new Blob(chunks, { type: "audio/webm" });
     const arr = await blob.arrayBuffer();
     const base64 = btoa(String.fromCharCode(...new Uint8Array(arr)));
-    const currentSentence = sentences[currentSentenceIndex];
+    const sentence = sentences[selected];
     const res = await fetch("/api/evaluate", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ file: base64, reference: currentSentence })
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ file: base64, reference: sentence })
     });
     const data = await res.json();
     if (data.score !== undefined) {
-      scoreDiv.textContent = `⭐ Score: ${data.score}/100\n💬 ${data.feedback}`;
+      scoreDiv.textContent = `⭐ คะแนน: ${data.score}/100\n💬 ${data.feedback}`;
     } else {
       scoreDiv.textContent = "❌ Error: " + (data.error || "Unknown");
     }
+    document.getElementById("recordBtn").disabled = false;
+    document.getElementById("stopBtn").disabled = true;
   };
-  startBtn.disabled = false;
-  stopBtn.disabled = true;
 };
+
+// ฟังเสียง
 async function playTTS(text) {
   const res = await fetch("/api/tts", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {"Content-Type": "application/json"},
     body: JSON.stringify({ text })
   });
   if (res.ok) {
-    const audioBlob = await res.blob();
-    const url = URL.createObjectURL(audioBlob);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
     new Audio(url).play();
   } else {
-    alert("TTS Error");
+    alert("ไม่สามารถสร้างเสียงได้");
   }
 }
 </script>
