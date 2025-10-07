@@ -16,13 +16,14 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "gpt-4o-mini-tts",
-        voice: "alloy", // เปลี่ยนเสียงได้เป็น: verse, soft, nova
+        voice: "alloy",
         input: text,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error("TTS error:", errorText);
       return res.status(500).json({ error: errorText });
     }
 
@@ -30,6 +31,7 @@ export default async function handler(req, res) {
     res.setHeader("Content-Type", "audio/mpeg");
     res.send(Buffer.from(audioBuffer));
   } catch (err) {
+    console.error("TTS error:", err);
     res.status(500).json({ error: err.message });
   }
 }
