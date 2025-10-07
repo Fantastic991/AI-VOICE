@@ -8,38 +8,32 @@ function toBase64(blob) {
   });
 }
 
-// ✅ ตั้งค่าปุ่มและองค์ประกอบในหน้า HTML
+let mediaRecorder;
+let audioChunks = [];
+
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
 const playback = document.getElementById("playback");
 const scoreDiv = document.getElementById("score");
 
-let mediaRecorder;
-let audioChunks = [];
-let currentSentenceIndex = 0;
-
-const sentences = [
-  "Hello, how are you?",
-  "I like to travel to Korea.",
-  "This is my English pronunciation test."
-];
-
-// ✅ เริ่มอัดเสียง
 startBtn.onclick = async () => {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  mediaRecorder = new MediaRecorder(stream);
-  mediaRecorder.start();
-  audioChunks = [];
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    mediaRecorder.start();
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
 
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
+    scoreDiv.textContent = "🎙️ Recording...";
 
-  mediaRecorder.ondataavailable = (event) => {
-    audioChunks.push(event.data);
-  };
+    mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+  } catch (err) {
+    alert("กรุณาอนุญาตให้ใช้ไมโครโฟน");
+    console.error(err);
+  }
 };
 
-// ✅ หยุดอัดและส่งไปตรวจ
 stopBtn.onclick = async () => {
   mediaRecorder.stop();
   startBtn.disabled = false;
@@ -58,13 +52,12 @@ stopBtn.onclick = async () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           file: base64Data,
-          reference: sentences[currentSentenceIndex],
-        }),
+          reference: "Hello world"
+        })
       });
-
       const j = await resp.json();
       if (resp.ok) {
-        scoreDiv.innerHTML = `🎯 ${j.result}`;
+        scoreDiv.innerHTML = `✅ ${j.result}`;
       } else {
         scoreDiv.innerHTML = `❌ Error: ${j.error}`;
       }
