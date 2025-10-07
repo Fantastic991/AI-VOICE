@@ -1,40 +1,32 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI ตรวจการออกเสียง</title>
-  <style>
-    body {
-      font-family: "Prompt", sans-serif;
-      text-align: center;
-      margin-top: 50px;
-    }
-    button {
-      font-size: 18px;
-      padding: 10px 20px;
-      margin: 10px;
-    }
-    #score {
-      margin-top: 20px;
-      font-size: 20px;
-    }
-  </style>
+  <title>AI Voice Pronunciation</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h2>🎤 AI ตรวจการออกเสียง</h2>
+  <div class="container">
+    <h1>🎙️ AI Voice Pronunciation</h1>
+    <p>ฝึกพูดภาษาอังกฤษด้วย AI เหมือนแอป Elsa Speak</p>
 
-  <p id="sentence">"Hello, how are you?"</p>
+    <div class="sentence-box">
+      <label for="sentence">ตัวอย่างประโยคภาษาอังกฤษ</label>
+      <input type="text" id="sentence" value="I would like a cup of coffee, please." />
+      <button id="addSentence">➕ เพิ่มประโยค</button>
+    </div>
 
-  <button id="start">Start</button>
-  <button id="stop" disabled>Stop</button>
+    <ul id="sentenceList"></ul>
 
-  <br />
-  <audio id="playback" controls></audio>
+    <div class="record-section">
+      <button id="recordBtn">🎤 เริ่มอัดเสียง</button>
+      <button id="stopBtn" disabled>⏹ หยุด</button>
+    </div>
 
-  <div id="score"></div>
+    <div id="result"></div>
+  </div>
 
-  <!-- ✅ เรียก main.js -->
   <script src="main.js"></script>
 </body>
 </html>
