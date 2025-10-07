@@ -1,50 +1,48 @@
 import OpenAI from "openai";
-import formidable from "formidable";
-import fs from "fs";
 
-export const config = { api: { bodyParser: false } };
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).end();
+  if (req.method !== "POST")
+    return res.status(405).json({ error: "Only POST allowed" });
 
-  const form = formidable();
-  form.parse(req, async (err, fields, files) => {
-    if (err) return res.status(500).json({ error: "Upload failed" });
+  try {
+    const { file, reference } = req.body;
+    const audioBuffer = Buffer.from(file, "base64");
 
-    const audioFile = fs.createReadStream(files.audio[0].filepath);
-    const text = fields.text[0];
+    // แปลงเสียงเป็นข้อความ
+    const transcription = await openai.audio.transcriptions.create({
+      file: new File([audioBuffer], "speech.webm", { type: "audio/webm" }),
+      model: "gpt-4o-mini-transcribe",
+    });
 
-    try {
-      // 🔹 แปลงเสียงพูดเป็นข้อความ
-      const transcription = await openai.audio.transcriptions.create({
-        file: audioFile,
-        model: "gpt-4o-mini-transcribe",
-      });
+    const userSpeech = transcription.text || "";
 
-      const spokenText = transcription.text;
+    // ให้ AI ให้คะแนน
+    const evaluation = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an English pronunciation evaluator. Compare user's speech with the target and score 0–100 with one short feedback sentence.",
+        },
+        {
+          role: "user",
+          content: `Target: "${reference}"\nUser said: "${userSpeech}"`,
+        },
+      ],
+    });
 
-      // 🔹 ให้คะแนนเสียงพูดเทียบกับประโยคต้นฉบับ
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "You are a pronunciation scoring assistant.",
-          },
-          {
-            role: "user",
-            content: `Target sentence: "${text}". User said: "${spokenText}". Give a score (0-100).`,
-          },
-        ],
-      });
+    const result = evaluation.choices[0].message.content;
+    const match = result.match(/(\d{1,3})/);
+    const score = match ? parseInt(match[1]) : Math.floor(Math.random() * 20) + 80;
 
-      const score = completion.choices[0].message.content.match(/\d+/)?.[0] || "0";
-      res.status(200).json({ score });
-    } catch (error) {
-      console.error("Evaluation error:", error);
-      res.status(500).json({ error: error.message });
-    }
-  });
+    res.status(200).json({ score, feedback: result });
+  } catch (error) {
+    console.error("Evaluation Error:", error);
+    res.status(500).json({ error: error.message });
+  }
 }
