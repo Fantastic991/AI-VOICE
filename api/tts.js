@@ -1,4 +1,3 @@
-// /api/tts.js
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -11,19 +10,18 @@ export default async function handler(req, res) {
     const response = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model: "gpt-4o-mini-tts",
-        voice: "alloy",
+        voice: "alloy", // ลองเปลี่ยนเป็น: verse หรือ soft ก็ได้
         input: text,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("TTS error:", errorText);
       return res.status(500).json({ error: errorText });
     }
 
@@ -31,7 +29,6 @@ export default async function handler(req, res) {
     res.setHeader("Content-Type", "audio/mpeg");
     res.send(Buffer.from(audioBuffer));
   } catch (err) {
-    console.error("TTS error:", err);
     res.status(500).json({ error: err.message });
   }
 }
