@@ -1,30 +1,37 @@
 // /api/tts.js
-import { OpenAI } from "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const { text } = req.body;
+  if (!text) return res.status(400).json({ error: "No text provided" });
+
   try {
-    const { text } = req.query;
-
-    if (!text) {
-      return res.status(400).json({ error: "Missing text" });
-    }
-
-    // ใช้เสียง gpt-4o-mini-tts
-    const mp3 = await openai.audio.speech.create({
-      model: "gpt-4o-mini-tts",
-      voice: "alloy",
-      input: text,
+    const response = await fetch("https://api.openai.com/v1/audio/speech", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini-tts",
+        voice: "alloy",
+        input: text,
+      }),
     });
 
-    const buffer = Buffer.from(await mp3.arrayBuffer());
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("OpenAI TTS Error:", errText);
+      return res.status(500).json({ error: errText });
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
     res.setHeader("Content-Type", "audio/mpeg");
-    res.send(buffer);
+    res.send(Buffer.from(arrayBuffer));
   } catch (error) {
-    console.error("TTS Error:", error);
-    res.status(500).json({ error: "TTS failed", details: error.message });
+    console.error("Server Error:", error);
+    res.status(500).json({ error: error.message });
   }
 }
